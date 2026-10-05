@@ -21,3 +21,11 @@ module "ecr" {
 
   tags = local.tags
 }
+
+
+
+locals {
+  tags = {
+    "compute.analytical-platform.service.justice.gov.uk/workload" = "actions-runners"
+  }
+}
