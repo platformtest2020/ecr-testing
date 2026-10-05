@@ -1,0 +1,45 @@
+name: Refresh GHCR token (Octo STS)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"   # token lasts 1 hour
+
+permissions:
+  id-token: write
+
+concurrency:
+  group: refresh-ghcr-token
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GitHub token from Octo STS
+        id: octo-sts
+        uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        with:
+          scope: ${{ github.repository }}
+          identity: ecr-ghcr
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ vars.ECR_GHCR_REFRESH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Update ECR pull-through cache secret
+        env:
+          GHCR_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          set -euo pipefail
+          aws secretsmanager put-secret-value \
+            --secret-id ecr-pullthroughcache/github \
+            --secret-string "$(jq -cn --arg t "$GHCR_TOKEN" '{username: "octo-sts", accessToken: $t}')" \
+            --query VersionId --output text
+
+      - name: Validate rule (informational)
+        run: |
+          aws ecr validate-pull-through-cache-rule --ecr-repository-prefix github \
+            --query '{isValid: isValid, failure: failure}'
