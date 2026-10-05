@@ -32,7 +32,8 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=octo-sts.dev" | jq -r .value)
 
           resp=$(curl -sS -w '\n%{http_code}' -H "Authorization: Bearer $oidc" \
-            "https://octo-sts.dev/sts/exchange?scope=${GITHUB_REPOSITORY_OWNER}&identity=ecr-ghcr")
+            "https://octo-sts.dev/sts/exchange?scope=platformtest2020&identity=ecr-ghcr")
+            
           code=$(echo "$resp" | tail -n1)
           body=$(echo "$resp" | sed '$d')
           if [ "$code" != "200" ]; then
