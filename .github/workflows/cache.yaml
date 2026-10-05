@@ -1,0 +1,25 @@
+name: Check GHCR pull-through cache
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 7 * * *"   # daily; fails (and emails you) if the PAT stops working
+
+permissions:
+  id-token: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ vars.ECR_GHCR_REFRESH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Validate ECR pull-through cache rule
+        run: |
+          result=$(aws ecr validate-pull-through-cache-rule --ecr-repository-prefix github)
+          echo "$result" | jq '{isValid, failure}'
+          [ "$(echo "$result" | jq -r .isValid)" = "true" ]
