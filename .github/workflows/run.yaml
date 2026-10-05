@@ -1,0 +1,38 @@
+name: Refresh ECR GHCR credentials
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Refresh well before the short-lived Octo STS token expires.
+    - cron: "*/30 * * * *"
+
+permissions:
+  id-token: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Exchange GitHub OIDC token with Octo STS
+        id: octo-sts
+        uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        with:
+          scope: ${{ github.repository }}
+          identity: ecr-ghcr
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ vars.ECR_GHCR_REFRESH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Update ECR pull-through cache secret
+        env:
+          SECRET_ID: ecr-pullthroughcache/github
+          GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          set -euo pipefail
+
+          secret_json="$(jq -cn             --arg username "octo-sts"             --arg password "$GITHUB_TOKEN"             '{username: $username, password: $password}')"
+
+          aws secretsmanager put-secret-value             --secret-id "$SECRET_ID"             --secret-string "$secret_json"
