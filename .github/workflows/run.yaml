@@ -29,10 +29,14 @@ jobs:
       - name: Update ECR pull-through cache secret
         env:
           SECRET_ID: ecr-pullthroughcache/github
-          GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GHCR_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           set -euo pipefail
-
-          secret_json="$(jq -cn             --arg username "octo-sts"             --arg password "$GITHUB_TOKEN"             '{username: $username, password: $password}')"
-
-          aws secretsmanager put-secret-value             --secret-id "$SECRET_ID"             --secret-string "$secret_json"
+          secret_json="$(jq -cn \
+            --arg username "octo-sts" \
+            --arg token "$GHCR_TOKEN" \
+            '{username: $username, accessToken: $token}')"
+          aws secretsmanager put-secret-value \
+            --secret-id "$SECRET_ID" \
+            --secret-string "$secret_json" \
+            --query VersionId --output text         --secret-string "$secret_json"
