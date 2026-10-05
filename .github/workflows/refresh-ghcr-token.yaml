@@ -27,15 +27,26 @@ jobs:
       - name: Get Octo STS token and update ECR secret
         run: |
           set -euo pipefail
+
           oidc=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=octo-sts.dev" | jq -r .value)
-          token=$(curl -sSf -H "Authorization: Bearer $oidc" \
-            "https://octo-sts.dev/sts/exchange?scope=${GITHUB_REPOSITORY_OWNER}&identity=ecr-ghcr" | jq -r .token)
-            
+
+          resp=$(curl -sS -w '\n%{http_code}' -H "Authorization: Bearer $oidc" \
+            "https://octo-sts.dev/sts/exchange?scope=${GITHUB_REPOSITORY_OWNER}&identity=ecr-ghcr")
+          code=$(echo "$resp" | tail -n1)
+          body=$(echo "$resp" | sed '$d')
+          if [ "$code" != "200" ]; then
+            echo "Octo STS returned HTTP $code: $body"
+            exit 1
+          fi
+
+          token=$(echo "$body" | jq -r .token)
           if [ -z "$token" ] || [ "$token" = "null" ]; then
-            echo "Octo STS did not return a token"; exit 1
+            echo "Octo STS did not return a token"
+            exit 1
           fi
           echo "::add-mask::$token"
+
           aws secretsmanager put-secret-value \
             --secret-id ecr-pullthroughcache/github \
             --secret-string "$(jq -cn --arg t "$token" '{username: "octo-sts", accessToken: $t}')" \
