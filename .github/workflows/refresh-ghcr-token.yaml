@@ -12,6 +12,12 @@ concurrency:
   group: refresh-ghcr-token
   cancel-in-progress: false
 
+env:
+  # Repo whose packages ECR pulls; its policy lives in .github/chainguard/ecr-ghcr.sts.yaml
+  OCTO_STS_SCOPE: raghavvidya2020/helm-charts
+  OCTO_STS_IDENTITY: ecr-ghcr
+  SECRET_ID: ecr-pullthroughcache/github
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -32,8 +38,7 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=octo-sts.dev" | jq -r .value)
 
           resp=$(curl -sS -w '\n%{http_code}' -H "Authorization: Bearer $oidc" \
-            "https://octo-sts.dev/sts/exchange?scope=platformtest2020&identity=ecr-ghcr")
-            
+            "https://octo-sts.dev/sts/exchange?scope=${OCTO_STS_SCOPE}&identity=${OCTO_STS_IDENTITY}")
           code=$(echo "$resp" | tail -n1)
           body=$(echo "$resp" | sed '$d')
           if [ "$code" != "200" ]; then
@@ -49,11 +54,12 @@ jobs:
           echo "::add-mask::$token"
 
           aws secretsmanager put-secret-value \
-            --secret-id ecr-pullthroughcache/github \
+            --secret-id "$SECRET_ID" \
             --secret-string "$(jq -cn --arg t "$token" '{username: "octo-sts", accessToken: $t}')" \
             --query VersionId --output text
 
       - name: Validate rule (informational)
         run: |
+          sleep 30   # give Secrets Manager time to publish the new version
           aws ecr validate-pull-through-cache-rule --ecr-repository-prefix github \
             --query '{isValid: isValid, failure: failure}'
