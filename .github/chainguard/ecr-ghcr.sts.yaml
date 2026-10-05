@@ -1,5 +1,10 @@
 issuer: https://token.actions.githubusercontent.com
+# Only the main branch of ecr-testing may use this policy
 subject: repo:raghavvidya2020@76536873/ecr-testing@1406026556:ref:refs/heads/main
 
 permissions:
   packages: read
+
+# Leave empty for all repositories the Octo STS app can access,
+# or list specific repos, e.g. [ecr-testing, platform-charts]
+repositories: []
