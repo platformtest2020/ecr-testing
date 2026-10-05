@@ -1,7 +1,5 @@
 issuer: https://token.actions.githubusercontent.com
-subject: repo:raghavvidya2020@76536873/ecr-testing@1406026556:ref:refs/heads/main
+subject: repo:platformtest2020@338273576/ecr-testing@1406026556:ref:refs/heads/main
 
 permissions:
   packages: read
-
-repositories: []
