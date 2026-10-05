@@ -14,7 +14,7 @@ concurrency:
 
 env:
   # Repo whose packages ECR pulls; its policy lives in .github/chainguard/ecr-ghcr.sts.yaml
-  OCTO_STS_SCOPE: raghavvidya2020/helm-charts
+  OCTO_STS_SCOPE: platformtest2020/helm-charts
   OCTO_STS_IDENTITY: ecr-ghcr
   SECRET_ID: ecr-pullthroughcache/github
 
