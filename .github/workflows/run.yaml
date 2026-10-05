@@ -40,3 +40,16 @@ jobs:
             --secret-id "$SECRET_ID" \
             --secret-string "$secret_json" \
             --query VersionId --output text         --secret-string "$secret_json"
+      - name: Test GHCR login (debug)
+        env:
+          OCTO_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for name in OCTO_TOKEN GH_TOKEN; do
+            if echo "${!name}" | docker login ghcr.io -u x --password-stdin >/dev/null 2>&1; then
+              echo "$name -> login OK"
+            else
+              echo "$name -> login REJECTED"
+            fi
+            docker logout ghcr.io >/dev/null 2>&1 || true
+          done
